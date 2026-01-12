@@ -16,6 +16,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.isInvincible = false;
         this.canShoot = true;
         this.isThrusting = false;
+        this.laserShotsRemaining = 0;  // Laser powerup shots
 
         // Configure physics body - scale down 512px sprite to 48px game size (1.5x larger)
         this.setScale(48 / 512);
@@ -115,7 +116,17 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const bulletX = this.x;
         const bulletY = this.y - 15;
 
-        this.bulletPool.fire(bulletX, bulletY);
+        // Check if laser powerup is active
+        const isLaser = this.laserShotsRemaining > 0;
+        this.bulletPool.fire(bulletX, bulletY, 0, null, isLaser);
+
+        // Decrement laser shots and update UI
+        if (isLaser) {
+            this.laserShotsRemaining--;
+            if (this.scene.updateLaserDisplay) {
+                this.scene.updateLaserDisplay();
+            }
+        }
 
         // Optional: slight recoil effect
         this.y += 2;
@@ -212,6 +223,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.health = GAME_CONFIG.PLAYER.MAX_HEALTH;
         this.isInvincible = false;
         this.canShoot = true;
+        this.laserShotsRemaining = 0;
 
         this.setPosition(
             GAME_CONFIG.PLAYER.START_X,

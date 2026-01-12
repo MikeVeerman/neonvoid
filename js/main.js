@@ -20,6 +20,8 @@ class BootScene extends Phaser.Scene {
         this.load.image('bullet_enemy', 'assets/sprites/bullet_enemy.png');
         this.load.image('explosion', 'assets/sprites/explosion.png');
         this.load.image('background', 'assets/sprites/background.png');
+        this.load.image('powerup_health', 'assets/sprites/powerup_health.png');
+        this.load.image('powerup_laser', 'assets/sprites/powerup_laser.png');
 
         // Generate starfield programmatically (simple stars work better generated)
         this.generateStarfield();
@@ -73,6 +75,7 @@ class GameScene extends Phaser.Scene {
         this.createBulletPools();
         this.createPlayer();
         this.createEnemyManager();
+        this.createPowerupManager();
         this.createUI();
         this.createAnimations();
         this.setupCollisions();
@@ -161,6 +164,13 @@ class GameScene extends Phaser.Scene {
     }
 
     /**
+     * Create powerup manager
+     */
+    createPowerupManager() {
+        this.powerupManager = new PowerupManager(this);
+    }
+
+    /**
      * Create UI elements
      */
     createUI() {
@@ -189,6 +199,15 @@ class GameScene extends Phaser.Scene {
             { ...textStyle, fill: '#00FF00' }
         );
         this.healthText.setDepth(100);
+
+        // Laser powerup display (hidden initially)
+        this.laserText = this.add.text(
+            GAME_CONFIG.UI.HEALTH_X,
+            GAME_CONFIG.UI.HEALTH_Y + 25,
+            '',
+            { ...textStyle, fill: '#FFA500' }
+        );
+        this.laserText.setDepth(100);
 
         // Wave display
         this.waveText = this.add.text(
@@ -306,6 +325,15 @@ class GameScene extends Phaser.Scene {
             null,
             this
         );
+
+        // Player collects powerups
+        this.physics.add.overlap(
+            this.powerupManager.getGroup(),
+            this.player,
+            this.onCollectPowerup,
+            null,
+            this
+        );
     }
 
     /**
@@ -396,6 +424,10 @@ class GameScene extends Phaser.Scene {
 
             this.spawnExplosion(ex, ey);
             this.addScore(score);
+
+            // 10% chance to spawn powerup
+            this.powerupManager.trySpawn(ex, ey);
+
             enemy.destroy();
         }
     }
@@ -445,6 +477,67 @@ class GameScene extends Phaser.Scene {
         // Damage player heavily for collision
         this.player.takeDamage(30);
         this.updateHealthDisplay();
+    }
+
+    /**
+     * Collision: Player collects powerup
+     */
+    onCollectPowerup(obj1, obj2) {
+        if (!obj1 || !obj2) return;
+
+        // Determine which is the powerup (has type property)
+        const powerup = obj1.type ? obj1 : obj2;
+
+        if (!powerup.active) return;
+
+        let message = '';
+
+        // Apply powerup effect
+        if (powerup.type === POWERUP_TYPES.HEALTH) {
+            this.player.health = Math.min(
+                this.player.health + 25,
+                GAME_CONFIG.PLAYER.MAX_HEALTH
+            );
+            this.updateHealthDisplay();
+            message = 'PowerUp +25 Health';
+        } else if (powerup.type === POWERUP_TYPES.LASER) {
+            this.player.laserShotsRemaining = 50;
+            this.updateLaserDisplay();
+            message = 'PowerUp Laser';
+        }
+
+        // Show powerup message
+        this.showPowerupMessage(message, powerup.x, powerup.y);
+
+        // Destroy powerup
+        powerup.destroy();
+    }
+
+    /**
+     * Show powerup collected message
+     */
+    showPowerupMessage(message, x, y) {
+        const text = this.add.text(x, y, message, {
+            fontFamily: GAME_CONFIG.UI.FONT_FAMILY,
+            fontSize: '18px',
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 3,
+        });
+        text.setOrigin(0.5);
+        text.setDepth(100);
+
+        // Animate: float up and fade out
+        this.tweens.add({
+            targets: text,
+            y: y - 50,
+            alpha: 0,
+            duration: 1000,
+            ease: 'Power2',
+            onComplete: () => {
+                text.destroy();
+            }
+        });
     }
 
     /**
@@ -512,6 +605,18 @@ class GameScene extends Phaser.Scene {
             this.healthText.setFill('#FFFF00'); // Yellow
         } else {
             this.healthText.setFill('#FF0000'); // Red
+        }
+    }
+
+    /**
+     * Update laser powerup display
+     */
+    updateLaserDisplay() {
+        const shots = this.player.laserShotsRemaining || 0;
+        if (shots > 0) {
+            this.laserText.setText(`LASER: ${shots}`);
+        } else {
+            this.laserText.setText('');
         }
     }
 

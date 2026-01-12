@@ -25,7 +25,7 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
      * @param {number} velocityY - Y velocity
      * @param {boolean} isPlayer - True if fired by player
      */
-    fire(x, y, velocityX, velocityY, isPlayer = true) {
+    fire(x, y, velocityX, velocityY, isPlayer = true, isLaser = false) {
         this.isPlayerBullet = isPlayer;
         this.damage = isPlayer
             ? GAME_CONFIG.BULLETS.PLAYER_DAMAGE
@@ -42,6 +42,10 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
         }
         this.setActive(true);
         this.setVisible(true);
+
+        // Laser powerup: 3x size
+        const baseScale = 24 / 512;
+        this.setScale(isLaser ? baseScale * 3 : baseScale);
 
         // Set velocity
         this.setVelocity(velocityX, velocityY);
@@ -115,7 +119,7 @@ class BulletPool extends Phaser.Physics.Arcade.Group {
      * @param {number} velocityY - Y velocity (default based on pool type)
      * @returns {Bullet|null} The fired bullet, or null if pool exhausted
      */
-    fire(x, y, velocityX = 0, velocityY = null) {
+    fire(x, y, velocityX = 0, velocityY = null, isLaser = false) {
         // Get first inactive bullet from pool
         const bullet = this.getFirstDead(false);
 
@@ -127,7 +131,7 @@ class BulletPool extends Phaser.Physics.Arcade.Group {
                     : GAME_CONFIG.BULLETS.ENEMY_SPEED;
             }
 
-            bullet.fire(x, y, velocityX, velocityY, this.isPlayerPool);
+            bullet.fire(x, y, velocityX, velocityY, this.isPlayerPool, isLaser);
             return bullet;
         }
 
